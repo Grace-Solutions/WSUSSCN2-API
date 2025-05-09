@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: wsusscn2-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: wsusscn2-api/api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env:
+        - name: PG_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_HOST
+        - name: PG_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_PORT
+        - name: PG_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_DATABASE
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_USER
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_PASSWORD
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: REDIS_PASSWORD
+              optional: true
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_SECRET_KEY
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: LOG_LEVEL
+        - name: CORS_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: CORS_ORIGINS
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: nlog-config
+          mountPath: /app/NLog.config
+          subPath: NLog.config
+      volumes:
+      - name: nlog-config
+        configMap:
+          name: nlog-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: wsusscn2-api
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nlog-config
+  namespace: wsusscn2-api
+data:
+  NLog.config: |
+    <?xml version="1.0" encoding="utf-8" ?>
+    <nlog xmlns="http://www.nlog-project.org/schemas/NLog.xsd"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          autoReload="true"
+          internalLogLevel="Info">
+
+      <!-- Define targets for logging -->
+      <targets>
+        <!-- Console target for all logs -->
+        <target xsi:type="Console" name="console" 
+                layout="${longdate}|${level:uppercase=true}|${logger}|${message} ${exception:format=tostring}" />
+        
+        <!-- File target for all logs -->
+        <target xsi:type="File" name="allfile" 
+                fileName="${basedir}/logs/wsusscn2-api-${shortdate}.log"
+                layout="${longdate}|${level:uppercase=true}|${logger}|${message} ${exception:format=tostring}" 
+                archiveFileName="${basedir}/logs/archives/wsusscn2-api-{#}.log"
+                archiveEvery="Day"
+                archiveNumbering="Date"
+                maxArchiveFiles="7"
+                archiveDateFormat="yyyy-MM-dd"
+                concurrentWrites="true"
+                keepFileOpen="false" />
+        
+        <!-- File target for errors only -->
+        <target xsi:type="File" name="errorfile" 
+                fileName="${basedir}/logs/wsusscn2-api-errors-${shortdate}.log"
+                layout="${longdate}|${level:uppercase=true}|${logger}|${message} ${exception:format=tostring}" 
+                archiveFileName="${basedir}/logs/archives/wsusscn2-api-errors-{#}.log"
+                archiveEvery="Day"
+                archiveNumbering="Date"
+                maxArchiveFiles="30"
+                archiveDateFormat="yyyy-MM-dd"
+                concurrentWrites="true"
+                keepFileOpen="false" />
+      </targets>
+
+      <!-- Define rules for mapping loggers to targets -->
+      <rules>
+        <!-- Log all messages to console -->
+        <logger name="*" minlevel="${environment:variable=LOG_LEVEL:default=Information}" writeTo="console" />
+        
+        <!-- Log all messages to file -->
+        <logger name="*" minlevel="${environment:variable=LOG_LEVEL:default=Information}" writeTo="allfile" />
+        
+        <!-- Log error messages to error file -->
+        <logger name="*" minlevel="Error" writeTo="errorfile" />
+      </rules>
+    </nlog>

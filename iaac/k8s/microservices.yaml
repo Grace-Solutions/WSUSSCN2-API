@@ -1,0 +1,252 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sync
+  namespace: wsusscn2-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sync
+  template:
+    metadata:
+      labels:
+        app: sync
+    spec:
+      containers:
+      - name: sync
+        image: wsusscn2-api/sync:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PG_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_HOST
+        - name: PG_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_PORT
+        - name: PG_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_DATABASE
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_USER
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_PASSWORD
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_SECRET_KEY
+        - name: CAB_SYNC_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: CAB_SYNC_INTERVAL
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: LOG_LEVEL
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: nlog-config
+          mountPath: /app/NLog.config
+          subPath: NLog.config
+      volumes:
+      - name: nlog-config
+        configMap:
+          name: nlog-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parse
+  namespace: wsusscn2-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: parse
+  template:
+    metadata:
+      labels:
+        app: parse
+    spec:
+      containers:
+      - name: parse
+        image: wsusscn2-api/parse:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PG_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_HOST
+        - name: PG_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_PORT
+        - name: PG_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_DATABASE
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_USER
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_PASSWORD
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_SECRET_KEY
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: LOG_LEVEL
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: nlog-config
+          mountPath: /app/NLog.config
+          subPath: NLog.config
+      volumes:
+      - name: nlog-config
+        configMap:
+          name: nlog-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rebuild
+  namespace: wsusscn2-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rebuild
+  template:
+    metadata:
+      labels:
+        app: rebuild
+    spec:
+      containers:
+      - name: rebuild
+        image: wsusscn2-api/rebuild:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PG_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_HOST
+        - name: PG_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_PORT
+        - name: PG_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: PG_DATABASE
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_USER
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: PG_PASSWORD
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wsusscn2-api-secrets
+              key: MINIO_SECRET_KEY
+        - name: GROUP_STRATEGY
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: GROUP_STRATEGY
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: wsusscn2-api-config
+              key: LOG_LEVEL
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        volumeMounts:
+        - name: nlog-config
+          mountPath: /app/NLog.config
+          subPath: NLog.config
+      volumes:
+      - name: nlog-config
+        configMap:
+          name: nlog-config
